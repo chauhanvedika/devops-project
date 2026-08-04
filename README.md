@@ -72,9 +72,13 @@ docker compose up --build
 
 Default login: `admin` / `Admin@12345` (change this immediately in any real deployment).
 
-> **Port conflicts?** If 3000 or 5000 are already used on your machine, create a
-> `docker-compose.override.yml` (gitignored) to remap ports locally without
-> touching the committed config. Docker Compose merges it automatically.
+> **Port conflicts?** If 3000 or 5000 are already used on your machine, add
+> these two lines to your `.env` (already gitignored) instead of editing
+> docker-compose.yml:
+> ```
+> BACKEND_HOST_PORT=5001
+> FRONTEND_HOST_PORT=3001
+> ```
 
 ## Project Structure
 

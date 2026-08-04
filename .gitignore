@@ -15,9 +15,6 @@ frontend/dist/
 !*.tfvars.example
 .terraform.lock.hcl
 
-# Local-only compose overrides (personal port remaps etc.)
-docker-compose.override.yml
-
 # OS/editor
 .DS_Store
 .vscode/
