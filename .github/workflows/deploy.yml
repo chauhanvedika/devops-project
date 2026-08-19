@@ -1,0 +1,75 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write   # required for OIDC - no stored AWS keys needed
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_BACKEND: 137018192036.dkr.ecr.ap-south-1.amazonaws.com/eims-backend
+  ECR_FRONTEND: 137018192036.dkr.ecr.ap-south-1.amazonaws.com/eims-frontend
+  EC2_INSTANCE_ID: i-0903e897cf795d285
+  APP_PUBLIC_IP: 3.7.118.177
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::137018192036:role/eims-github-actions-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend image
+        run: |
+          docker build -t ${{ env.ECR_BACKEND }}:${{ github.sha }} -t ${{ env.ECR_BACKEND }}:latest ./backend
+          docker push ${{ env.ECR_BACKEND }}:${{ github.sha }}
+          docker push ${{ env.ECR_BACKEND }}:latest
+
+      - name: Build and push frontend image
+        run: |
+          docker build \
+            --build-arg VITE_API_URL=http://${{ env.APP_PUBLIC_IP }}:30050/api \
+            -t ${{ env.ECR_FRONTEND }}:${{ github.sha }} -t ${{ env.ECR_FRONTEND }}:latest ./frontend
+          docker push ${{ env.ECR_FRONTEND }}:${{ github.sha }}
+          docker push ${{ env.ECR_FRONTEND }}:latest
+
+      - name: Trigger deploy on EC2 via SSM
+        run: |
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids ${{ env.EC2_INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters "{\"commands\":[
+              \"aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin 137018192036.dkr.ecr.ap-south-1.amazonaws.com\",
+              \"docker pull ${{ env.ECR_BACKEND }}:${{ github.sha }}\",
+              \"docker pull ${{ env.ECR_FRONTEND }}:${{ github.sha }}\",
+              \"docker save ${{ env.ECR_BACKEND }}:${{ github.sha }} | k3s ctr images import -\",
+              \"docker save ${{ env.ECR_FRONTEND }}:${{ github.sha }} | k3s ctr images import -\",
+              \"k3s kubectl set image deployment/eims-backend backend=${{ env.ECR_BACKEND }}:${{ github.sha }}\",
+              \"k3s kubectl set image deployment/eims-frontend frontend=${{ env.ECR_FRONTEND }}:${{ github.sha }}\",
+              \"k3s kubectl rollout status deployment/eims-backend --timeout=90s\",
+              \"k3s kubectl rollout status deployment/eims-frontend --timeout=90s\"
+            ]}" \
+            --query "Command.CommandId" --output text)
+          echo "SSM Command ID: $COMMAND_ID"
+          sleep 20
+          aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id ${{ env.EC2_INSTANCE_ID }} \
+            --query "{Status:Status,Output:StandardOutputContent,Error:StandardErrorContent}"
