@@ -1,11 +1,13 @@
 # --- Stage 1: install dependencies ---
 FROM node:20-alpine AS deps
+RUN apk update && apk upgrade --no-cache
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev
 
 # --- Stage 2: final runtime image ---
 FROM node:20-alpine
+RUN apk update && apk upgrade --no-cache
 WORKDIR /app
 
 # Non-root user - never run containers as root
