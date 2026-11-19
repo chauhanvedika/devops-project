@@ -7,13 +7,12 @@
 node_modules/
 frontend/dist/
 
-# Terraform (added in later phase)
+# Terraform
 **/.terraform/*
 *.tfstate
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
-.terraform.lock.hcl
 
 # OS/editor
 .DS_Store

@@ -11,12 +11,11 @@ ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 
 # --- Stage 2: serve with nginx (non-root by design) ---
-# --- Stage 2: serve with nginx (non-root by design) ---
 FROM nginxinc/nginx-unprivileged:1.27-alpine
 USER root
 RUN apk update && apk upgrade --no-cache
 USER nginx
-COPY --from=build /app/dist /usr/share/nginx/htmll
+COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 8080
