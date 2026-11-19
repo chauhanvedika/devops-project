@@ -5,9 +5,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-# VITE_API_URL is baked in at build time - pass via --build-arg in CI/CD
-ARG VITE_API_URL=http://localhost:5000/api
-ENV VITE_API_URL=$VITE_API_URL
+# The SPA calls the relative path /api; nginx proxies it to the backend at runtime,
+# so ONE image works in every environment (no URL baked in at build time).
 RUN npm run build
 
 # --- Stage 2: serve with nginx (non-root by design) ---
@@ -16,7 +15,9 @@ USER root
 RUN apk update && apk upgrade --no-cache
 USER nginx
 COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# *.template files are rendered with envsubst at container start (BACKEND_URL)
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+ENV BACKEND_URL=http://backend:5000
 
 EXPOSE 8080
 

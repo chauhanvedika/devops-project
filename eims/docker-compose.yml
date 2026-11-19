@@ -1,0 +1,86 @@
+name: eims
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: eims-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-eimsuser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
+      POSTGRES_DB: ${DB_NAME:-eims}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks: [data-tier]
+    mem_limit: 384m
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-eimsuser} -d ${DB_NAME:-eims}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # No published ports: reachable only from the backend over the internal network.
+
+  # One-shot: applies schema migrations and creates the first admin, then exits.
+  migrate:
+    build: ./backend
+    image: eims-backend:local
+    command: ["node", "db/migrate.js"]
+    restart: "no"
+    environment:
+      DB_HOST: db
+      DB_USER: ${DB_USER:-eimsuser}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME:-eims}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD (12+ chars) must be set in .env}
+      SEED_DEMO: ${SEED_DEMO:-true}
+    depends_on:
+      db: { condition: service_healthy }
+    networks: [data-tier]
+
+  backend:
+    image: eims-backend:local
+    container_name: eims-backend
+    restart: unless-stopped
+    environment:
+      PORT: 5000
+      DB_HOST: db
+      DB_USER: ${DB_USER:-eimsuser}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME:-eims}
+      DB_SSL: "false"
+      TRUST_PROXY_HOPS: 1
+      FRONTEND_ORIGIN: http://localhost:${FRONTEND_HOST_PORT:-3000}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    networks: [data-tier, app-tier]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 192m
+    # No published ports: the browser reaches the API only through the frontend's /api proxy.
+
+  frontend:
+    build: ./frontend
+    container_name: eims-frontend
+    restart: unless-stopped
+    environment:
+      BACKEND_URL: http://backend:5000
+    depends_on: [backend]
+    networks: [app-tier]
+    ports:
+      - "${FRONTEND_HOST_PORT:-3000}:8080"
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 64m
+
+networks:
+  data-tier:
+    internal: true   # database tier has no internet access at all
+  app-tier:
+
+volumes:
+  db_data:

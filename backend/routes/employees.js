@@ -33,7 +33,11 @@ router.get('/', async (req, res) => {
       LEFT JOIN departments d ON e.department_id = d.id
       ORDER BY e.full_name
     `);
-    res.json(result.rows);
+    // Salary is sensitive: only admins may see it
+    const rows = req.user.role === 'admin'
+      ? result.rows
+      : result.rows.map(({ salary, ...rest }) => rest);
+    res.json(rows);
   } catch (err) {
     console.error('Error fetching employees:', err.message);
     res.status(500).json({ error: 'Failed to fetch employees' });

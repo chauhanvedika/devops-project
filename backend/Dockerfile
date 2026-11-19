@@ -11,13 +11,13 @@ RUN apk update && apk upgrade --no-cache
 WORKDIR /app
 
 # Non-root user - never run containers as root
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+RUN addgroup -S -g 10001 appgroup && adduser -S -u 10001 -G appgroup appuser
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 RUN chown -R appuser:appgroup /app
-USER appuser
+USER 10001:10001
 
 EXPOSE 5000
 
