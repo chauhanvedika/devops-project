@@ -44,29 +44,6 @@ CREATE TABLE IF NOT EXISTS inventory_items (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Seed data
-INSERT INTO departments (name) VALUES
-    ('Engineering'), ('Sales'), ('Warehouse'), ('HR')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO categories (name) VALUES
-    ('Electronics'), ('Office Supplies'), ('Raw Materials')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO employees (full_name, email, position, department_id, salary, hire_date) VALUES
-    ('Asha Rao', 'asha.rao@example.com', 'Backend Engineer', 1, 85000, '2023-04-10'),
-    ('Vikram Shah', 'vikram.shah@example.com', 'Sales Executive', 2, 60000, '2022-11-01'),
-    ('Meera Nair', 'meera.nair@example.com', 'Warehouse Supervisor', 3, 52000, '2021-06-15')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO inventory_items (name, category_id, quantity, unit_price, reorder_level) VALUES
-    ('Laptop - Dell 5420', 1, 12, 65000, 5),
-    ('A4 Paper Ream', 2, 8, 250, 15),
-    ('Steel Sheet 2mm', 3, 40, 900, 10)
-ON CONFLICT DO NOTHING;
-
--- Default admin user: username=admin, password=Admin@12345
--- CHANGE THIS PASSWORD IMMEDIATELY after first login in any real deployment.
-INSERT INTO users (username, password_hash, role) VALUES
-    ('admin', '$2b$10$h4ThLNDNnggDgdZPDYEiM.KwrY0QhCTzf8gaLIwbPtLb5PuCXe5hK', 'admin')
-ON CONFLICT DO NOTHING;
+-- Reference data (idempotent)
+INSERT INTO departments (name) VALUES ('Engineering'), ('Sales'), ('Warehouse'), ('HR') ON CONFLICT DO NOTHING;
+INSERT INTO categories (name) VALUES ('Electronics'), ('Office Supplies'), ('Raw Materials') ON CONFLICT DO NOTHING;

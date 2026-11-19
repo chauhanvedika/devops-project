@@ -118,7 +118,7 @@ export default function Employees() {
               <td>{emp.email}</td>
               <td>{emp.position}</td>
               <td>{emp.department_name || '—'}</td>
-              <td>₹{Number(emp.salary).toLocaleString()}</td>
+              <td>{emp.salary === undefined ? '—' : `₹${Number(emp.salary).toLocaleString()}`}</td>
               <td>{emp.hire_date ? emp.hire_date.slice(0, 10) : '—'}</td>
               {isAdmin && (
                 <td>
