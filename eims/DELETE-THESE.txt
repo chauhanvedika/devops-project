@@ -1,6 +1,0 @@
-After copying these files over your repo, remove the files that were replaced:
-  git rm db/init.sql frontend/nginx.conf
-(db/init.sql -> backend/db/migrations/001_schema.sql + backend/db/seed-demo.sql
- frontend/nginx.conf -> frontend/nginx.conf.template)
-Then run in backend/:  npm ci     (package-lock.json changed: jest + supertest added)
-Rotate your JWT_SECRET and DB password, and change the admin password.

@@ -1,8 +1,0 @@
-# Local k3d/kind cluster: locally built images, demo data on.
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources: [../../base]
-configMapGenerator:
-  - name: eims-config
-    behavior: merge
-    literals: [SEED_DEMO=true]
